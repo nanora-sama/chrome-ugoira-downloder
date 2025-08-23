@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        function createIcon(size) {
+            const canvas = document.getElementById('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // グラデーション背景
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#0096FA');
+            gradient.addColorStop(1, '#0073E6');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // GIFテキスト
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.3}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('GIF', size / 2, size / 2 - size * 0.15);
+            
+            // 下矢印
+            ctx.beginPath();
+            ctx.moveTo(size * 0.35, size * 0.65);
+            ctx.lineTo(size * 0.5, size * 0.8);
+            ctx.lineTo(size * 0.65, size * 0.65);
+            ctx.lineWidth = size * 0.05;
+            ctx.strokeStyle = 'white';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            
+            // 矢印の縦線
+            ctx.beginPath();
+            ctx.moveTo(size * 0.5, size * 0.55);
+            ctx.lineTo(size * 0.5, size * 0.75);
+            ctx.stroke();
+            
+            return canvas.toDataURL('image/png');
+        }
+        
+        // 各サイズのアイコンを生成
+        const sizes = [16, 48, 128];
+        sizes.forEach(size => {
+            const dataUrl = createIcon(size);
+            const link = document.createElement('a');
+            link.download = `icon${size}.png`;
+            link.href = dataUrl;
+            link.textContent = `Download icon${size}.png`;
+            document.body.appendChild(link);
+            document.body.appendChild(document.createElement('br'));
+        });
+    </script>
+    <p>各リンクをクリックしてアイコンをダウンロードし、public/iconsフォルダに配置してください。</p>
+</body>
+</html>

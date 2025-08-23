@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixiv Ugoira GIF Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 18L6 12l1.4-1.4L11 14.2V3h2v11.2l3.6-3.6L18 12l-6 6z"/>
+          <path d="M20 20H4v-4h2v2h12v-2h2v4z"/>
+        </svg>
+        <h1>Ugoira GIF Downloader</h1>
+      </div>
+    </header>
+
+    <main>
+      <div id="status" class="status">
+        <div class="status-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <circle cx="8" cy="8" r="8"/>
+          </svg>
+        </div>
+        <span id="status-text">拡張機能は有効です</span>
+      </div>
+
+      <div class="settings">
+        <h2>設定</h2>
+        
+        <div class="setting-item">
+          <label for="quality">GIF品質</label>
+          <select id="quality">
+            <option value="1">最高品質 (大)</option>
+            <option value="5">高品質</option>
+            <option value="10" selected>標準</option>
+            <option value="15">低品質</option>
+            <option value="20">最低品質 (小)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="resolution">解像度</label>
+          <select id="resolution">
+            <option value="1920x1080">オリジナル (1920x1080)</option>
+            <option value="600x600">標準 (600x600)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="auto-download">
+            自動ダウンロード
+          </label>
+          <small>うごイラページを開いたら自動的にダウンロードボタンを表示</small>
+        </div>
+      </div>
+
+      <div class="stats">
+        <h2>統計</h2>
+        <div class="stat-item">
+          <span>ダウンロード回数:</span>
+          <span id="download-count">0</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="open-pixiv" class="btn btn-primary">
+          Pixivを開く
+        </button>
+        <button id="clear-data" class="btn btn-secondary">
+          データをクリア
+        </button>
+      </div>
+    </main>
+
+    <footer>
+      <div class="version">v1.0.0</div>
+      <div class="links">
+        <a href="#" id="help">ヘルプ</a>
+        <span>|</span>
+        <a href="#" id="about">このアプリについて</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
