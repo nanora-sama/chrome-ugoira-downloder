@@ -26,11 +26,160 @@ class UIInjector {
     detector.onDetection((info) => {
       this.currentUgoiraInfo = info;
       if (info) {
+        console.log('[Injector] Ugoira detected, injecting download button');
         this.injectDownloadButton();
       } else {
         this.removeDownloadButton();
       }
     });
+
+    // 初期化時の検出を強化
+    this.setupInitialDetection();
+    
+    // SPAのナビゲーション対応
+    this.observePageChanges();
+  }
+
+  private setupInitialDetection() {
+    // 現在のURLがartworksページか確認
+    if (!window.location.href.includes('/artworks/')) {
+      return;
+    }
+
+    console.log('[Injector] Setting up initial detection for ugoira page');
+    
+    // 複数のタイミングで検出を試みる
+    const runDetection = async () => {
+      const info = await detector.detectUgoira();
+      if (info && !this.downloadButton) {
+        console.log('[Injector] Initial detection found ugoira');
+        this.currentUgoiraInfo = info;
+        this.injectDownloadButton();
+        return true;
+      }
+      return false;
+    };
+
+    // 即座に実行
+    runDetection();
+    
+    // 段階的な遅延チェック
+    const delays = [500, 1000, 2000, 3000, 5000];
+    delays.forEach(delay => {
+      setTimeout(runDetection, delay);
+    });
+
+    // DOMContentLoaded後に実行
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(runDetection, 100);
+      });
+    }
+
+    // 完全読み込み後に実行
+    if (document.readyState !== 'complete') {
+      window.addEventListener('load', () => {
+        setTimeout(runDetection, 100);
+      });
+    }
+
+    // Pixivアプリケーションの準備完了を待つ
+    this.waitForPixivApp(runDetection);
+  }
+
+  private waitForPixivApp(callback: () => Promise<boolean>) {
+    let attempts = 0;
+    const maxAttempts = 30; // 15秒まで待つ
+    const checkInterval = 500;
+    
+    const checkReady = async () => {
+      attempts++;
+      
+      // Pixivアプリの準備状態を確認
+      const hasPixivContext = (window as any).pixiv?.context;
+      const hasArtworkTitle = document.querySelector('h1');
+      const hasActionButtons = document.querySelector('button[aria-label*="いいね"], button[aria-label*="Like"]');
+      
+      if (hasPixivContext || (hasArtworkTitle && hasActionButtons)) {
+        console.log('[Injector] Pixiv app ready, running detection');
+        const success = await callback();
+        if (!success && attempts < maxAttempts) {
+          setTimeout(checkReady, checkInterval);
+        }
+      } else if (attempts < maxAttempts) {
+        setTimeout(checkReady, checkInterval);
+      } else {
+        console.log('[Injector] Timeout waiting for Pixiv app');
+      }
+    };
+    
+    setTimeout(checkReady, checkInterval);
+  }
+
+
+  private observePageChanges() {
+    let lastUrl = location.href;
+    
+    // ページ変更をチェックする関数
+    const checkForChanges = async () => {
+      const currentUrl = location.href;
+      if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        
+        if (currentUrl.includes('/artworks/')) {
+          console.log('[Injector] URL changed to artwork page, checking for ugoira');
+          
+          // 複数回チェックを実行
+          const checkDelays = [100, 500, 1000, 2000];
+          checkDelays.forEach(delay => {
+            setTimeout(async () => {
+              const info = await detector.detectUgoira();
+              if (info && !this.downloadButton) {
+                console.log('[Injector] Navigation detected ugoira');
+                this.currentUgoiraInfo = info;
+                this.injectDownloadButton();
+              }
+            }, delay);
+          });
+        }
+      }
+    };
+    
+    // ブラウザナビゲーションイベントを監視
+    window.addEventListener('popstate', checkForChanges);
+    
+    // History APIのオーバーライド
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    history.pushState = function(...args) {
+      originalPushState.apply(history, args);
+      checkForChanges();
+    };
+    
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(history, args);
+      checkForChanges();
+    };
+    
+    // MutationObserverも使用（フォールバック）
+    const observer = new MutationObserver(() => {
+      checkForChanges();
+    });
+
+    // body要素の存在を確認してから監視開始
+    const startObserving = () => {
+      if (document.body) {
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      } else {
+        setTimeout(startObserving, 100);
+      }
+    };
+    
+    startObserving();
   }
 
   private injectDownloadButton() {
