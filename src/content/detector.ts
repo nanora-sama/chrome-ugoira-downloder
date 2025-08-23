@@ -12,29 +12,143 @@ class UgoiraDetector {
     // URLの変更を監視
     this.observeUrlChanges();
     
-    // 初回チェック
-    this.checkCurrentPage();
+    // 初回チェックのタイミングを改善
+    this.setupInitialDetection();
   }
+
+  private setupInitialDetection() {
+    // 現在のURLがartworksページか確認
+    if (!window.location.href.includes('/artworks/')) {
+      return;
+    }
+
+    // 複数のタイミングでチェックを実行
+    const checkStrategies = () => {
+      // 即座にチェック
+      this.checkCurrentPage();
+      
+      // 短い遅延後にチェック（React初期レンダリング待ち）
+      setTimeout(() => this.checkCurrentPage(), 500);
+      setTimeout(() => this.checkCurrentPage(), 1500);
+      setTimeout(() => this.checkCurrentPage(), 3000);
+      
+      // より長い遅延後にもチェック（遅延読み込み対応）
+      setTimeout(() => this.checkCurrentPage(), 5000);
+    };
+
+    // DOMContentLoadedイベント
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', checkStrategies);
+    } 
+    
+    // windowのloadイベント（画像等も含めた完全読み込み）
+    if (document.readyState !== 'complete') {
+      window.addEventListener('load', checkStrategies);
+    }
+    
+    // 既に読み込み済みの場合も実行
+    checkStrategies();
+    
+    // Pixiv特有の読み込み完了を検知
+    this.waitForPixivReady();
+  }
+
+  private waitForPixivReady() {
+    let attempts = 0;
+    const maxAttempts = 20;
+    const checkInterval = 500;
+    
+    const checkPixivReady = () => {
+      attempts++;
+      
+      // Pixiv固有のオブジェクトやDOM要素の存在確認
+      const isReady = 
+        // window.pixivオブジェクトの確認
+        (window as any).pixiv?.context ||
+        // 作品タイトルの存在確認
+        document.querySelector('h1') ||
+        // いいねボタンの存在確認
+        document.querySelector('button[aria-label*="いいね"], button[aria-label*="Like"]');
+      
+      if (isReady) {
+        console.log('[Detector] Pixiv app seems ready, checking for ugoira');
+        this.checkCurrentPage();
+        // 念のため少し遅延してもう一度チェック
+        setTimeout(() => this.checkCurrentPage(), 1000);
+      } else if (attempts < maxAttempts) {
+        setTimeout(checkPixivReady, checkInterval);
+      }
+    };
+    
+    setTimeout(checkPixivReady, checkInterval);
+  }
+
 
   private observeUrlChanges() {
     let lastUrl = location.href;
     
-    this.observer = new MutationObserver(() => {
+    // ブラウザのナビゲーションイベントも監視
+    const handleUrlChange = () => {
       const currentUrl = location.href;
       if (currentUrl !== lastUrl) {
         lastUrl = currentUrl;
-        this.checkCurrentPage();
+        if (currentUrl.includes('/artworks/')) {
+          // URL変更を検知したら複数回チェック
+          this.checkCurrentPage();
+          setTimeout(() => this.checkCurrentPage(), 500);
+          setTimeout(() => this.checkCurrentPage(), 1500);
+        }
       }
+    };
+    
+    // popstateイベント（ブラウザの戻る/進む）
+    window.addEventListener('popstate', handleUrlChange);
+    
+    // pushState/replaceStateのオーバーライド（SPA対応）
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    history.pushState = function(...args) {
+      originalPushState.apply(history, args);
+      handleUrlChange();
+    };
+    
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(history, args);
+      handleUrlChange();
+    };
+    
+    // MutationObserverも併用（フォールバック）
+    this.observer = new MutationObserver(() => {
+      handleUrlChange();
     });
 
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+    // body要素が存在するまで待つ
+    const startObserving = () => {
+      if (document.body) {
+        this.observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      } else {
+        setTimeout(startObserving, 100);
+      }
+    };
+    
+    startObserving();
   }
 
+  private lastDetectedInfo: UgoiraInfo | null = null;
+  
   private async checkCurrentPage() {
     const info = await this.detectUgoira();
+    
+    // 前回と同じ情報の場合は通知しない（重複防止）
+    if (JSON.stringify(info) === JSON.stringify(this.lastDetectedInfo)) {
+      return;
+    }
+    
+    this.lastDetectedInfo = info;
     
     if (info) {
       console.log('[Detector] Ugoira detected:', info);
@@ -70,39 +184,70 @@ class UgoiraDetector {
   }
 
   private async isUgoiraArtwork(illustId: string): Promise<boolean> {
-    // 方法1: canvas要素の存在確認
+    // 方法1: APIを最初に確認（最も確実）
+    try {
+      const response = await fetch(`/ajax/illust/${illustId}/ugoira_meta`, {
+        credentials: 'include',
+        headers: {
+          'x-user-id': this.getUserId(),
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.error) {
+          console.log('[Detector] Ugoira confirmed via API');
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error('[Detector] Error fetching ugoira meta:', e);
+    }
+
+    // 方法2: canvas要素の存在確認（DOM要素による確認）
     const canvas = document.querySelector('canvas[role="presentation"]');
-    if (canvas) return true;
+    if (canvas) {
+      console.log('[Detector] Ugoira confirmed via canvas element');
+      return true;
+    }
 
-    // 方法2: 再生ボタンの存在確認
-    const playButton = document.querySelector('[aria-label*="うごイラ"]');
-    if (playButton) return true;
+    // 方法3: 再生ボタンの存在確認
+    const playButton = document.querySelector('[aria-label*="うごイラ"], button[aria-label*="Play"], button[aria-label*="再生"]');
+    if (playButton) {
+      console.log('[Detector] Ugoira confirmed via play button');
+      return true;
+    }
 
-    // 方法3: window.pixivオブジェクトから確認
+    // 方法4: window.pixivオブジェクトから確認
     try {
       const pixivWindow = window as PixivWindow;
       if (pixivWindow.pixiv?.context?.ugokuIllustData) {
+        console.log('[Detector] Ugoira confirmed via window.pixiv');
         return true;
       }
     } catch (e) {
       console.error('[Detector] Error accessing window.pixiv:', e);
     }
 
-    // 方法4: APIを直接呼び出して確認
+    // 方法5: illustTypeをチェック
     try {
-      const response = await fetch(`/ajax/illust/${illustId}/ugoira_meta`, {
+      const illustResponse = await fetch(`/ajax/illust/${illustId}`, {
         credentials: 'include',
         headers: {
-          'x-user-id': this.getUserId()
+          'Accept': 'application/json'
         }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        return !data.error;
+      if (illustResponse.ok) {
+        const illustData = await illustResponse.json();
+        if (illustData?.body?.illustType === 2) {
+          console.log('[Detector] Ugoira confirmed via illustType');
+          return true;
+        }
       }
     } catch (e) {
-      console.error('[Detector] Error fetching ugoira meta:', e);
+      console.error('[Detector] Error fetching illust data:', e);
     }
 
     return false;
