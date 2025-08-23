@@ -1,0 +1,254 @@
+/* Pixiv Ugoira GIF Downloader - Content Script Styles */
+
+/* ダウンロードボタン */
+.ugoira-download-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 16px !important;
+  margin: 0 8px !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #0096FA 0%, #0073E6 100%) !important;
+  color: white !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 115, 230, 0.2) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  line-height: 1.5 !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.ugoira-download-btn:hover {
+  background: linear-gradient(135deg, #00A8FF 0%, #0080FF 100%) !important;
+  box-shadow: 0 4px 8px rgba(0, 115, 230, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.ugoira-download-btn:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(0, 115, 230, 0.2) !important;
+}
+
+.ugoira-download-btn[disabled] {
+  background: linear-gradient(135deg, #999 0%, #777 100%) !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+}
+
+/* プログレスオーバーレイ */
+.ugoira-progress-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  animation: fadeIn 0.2s ease !important;
+}
+
+.ugoira-progress-overlay .progress-content {
+  background: white !important;
+  border-radius: 12px !important;
+  padding: 28px !important;
+  min-width: 320px !important;
+  max-width: 400px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  animation: slideUp 0.3s ease !important;
+}
+
+.ugoira-progress-overlay .progress-message {
+  font-size: 15px !important;
+  margin-bottom: 16px !important;
+  color: #333 !important;
+  text-align: center !important;
+  font-weight: 500 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.ugoira-progress-overlay .progress-bar {
+  height: 6px !important;
+  background: #e0e0e0 !important;
+  border-radius: 3px !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.ugoira-progress-overlay .progress-bar-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #0096FA 0%, #0073E6 100%) !important;
+  width: 0% !important;
+  transition: width 0.3s ease !important;
+  border-radius: 3px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.ugoira-progress-overlay .progress-bar-fill::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  ) !important;
+  animation: shimmer 1.5s infinite !important;
+}
+
+/* エラー状態 */
+.ugoira-progress-overlay .progress-content.error {
+  background: #ff4444 !important;
+}
+
+.ugoira-progress-overlay .progress-content.error .progress-message {
+  color: white !important;
+}
+
+.ugoira-progress-overlay .progress-content.error .progress-bar {
+  display: none !important;
+}
+
+/* 成功状態 */
+.ugoira-progress-overlay .progress-content.success {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%) !important;
+}
+
+.ugoira-progress-overlay .progress-content.success .progress-message {
+  color: white !important;
+}
+
+/* アニメーション */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+/* ダウンロード中のボタンアニメーション */
+.ugoira-download-btn .spinner {
+  display: inline-block !important;
+  width: 14px !important;
+  height: 14px !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-top-color: white !important;
+  border-radius: 50% !important;
+  animation: spin 0.8s linear infinite !important;
+  margin-right: 6px !important;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .ugoira-download-btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    margin: 0 4px !important;
+  }
+
+  .ugoira-progress-overlay .progress-content {
+    min-width: 280px !important;
+    padding: 20px !important;
+  }
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+  .ugoira-progress-overlay .progress-content {
+    background: #2a2a2a !important;
+    color: #e0e0e0 !important;
+  }
+
+  .ugoira-progress-overlay .progress-message {
+    color: #e0e0e0 !important;
+  }
+
+  .ugoira-progress-overlay .progress-bar {
+    background: #444 !important;
+  }
+}
+
+/* ツールチップ */
+.ugoira-download-btn::before {
+  content: 'うごイラをGIF形式でダウンロード' !important;
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 6px 12px !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+  font-size: 12px !important;
+  font-weight: normal !important;
+  white-space: nowrap !important;
+  border-radius: 4px !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+  margin-bottom: 8px !important;
+}
+
+.ugoira-download-btn::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  border: 4px solid transparent !important;
+  border-top-color: rgba(0, 0, 0, 0.8) !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.ugoira-download-btn:hover::before,
+.ugoira-download-btn:hover::after {
+  opacity: 1 !important;
+}
