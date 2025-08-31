@@ -196,7 +196,7 @@ class UIInjector {
 
     const tryInject = () => {
       const targetContainer = this.findButtonContainer();
-      if (targetContainer) {
+      if (targetContainer && this.downloadButton) {
         targetContainer.appendChild(this.downloadButton);
         console.log('[Injector] Download button successfully injected');
       } else if (retryCount < maxRetries) {
@@ -291,13 +291,13 @@ class UIInjector {
     const wrapper = document.createElement('div');
     wrapper.className = 'ugoira-download-wrapper';
     wrapper.style.cssText = `
-      margin: 0 8px !important;
+      margin: 0 1rem 0 8px !important;
       display: inline-block !important;
       position: relative !important;
-      width: 48px !important;
-      height: 48px !important;
-      min-width: 48px !important;
-      max-width: 48px !important;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      max-width: 32px !important;
       flex-shrink: 0 !important;
     `;
 
@@ -329,17 +329,17 @@ class UIInjector {
     button.setAttribute('aria-label', 'うごイラをGIFでダウンロード');
     button.setAttribute('type', 'button');
     
-    // Pixivのボタンスタイルに合わせる（固定サイズ）
+    // Pixivのボタンスタイルに合わせる（32px固定サイズ）
     button.style.cssText = `
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      width: 48px !important;
-      height: 48px !important;
-      min-width: 48px !important;
-      min-height: 48px !important;
-      max-width: 48px !important;
-      max-height: 48px !important;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+      max-width: 32px !important;
+      max-height: 32px !important;
       padding: 0 !important;
       margin: 0 !important;
       border: none !important;
@@ -373,11 +373,11 @@ class UIInjector {
       }
     };
 
-    // Material Icon風のダウンロードアイコン（固定サイズ、強制適用）
+    // Material Icon風のダウンロードアイコン（32px固定サイズ、強制適用）
     const svgContainer = document.createElement('div');
     svgContainer.style.cssText = `
-      width: 48px !important;
-      height: 48px !important;
+      width: 32px !important;
+      height: 32px !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -389,8 +389,8 @@ class UIInjector {
            viewBox="0 0 24 24" 
            fill="white"
            style="
-             width: 36px !important;
-             height: 36px !important;
+             width: 20px !important;
+             height: 20px !important;
              display: block !important;
            ">
         <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
@@ -501,11 +501,12 @@ class UIInjector {
       await this.downloadFile(gifBlob, filename);
 
       this.updateProgressStatus('完了！', '✓');
+      this.updateButtonToComplete();
       setTimeout(() => {
         this.hideProgress();
-        this.isDownloading = false;
-        this.updateButtonState(false);
       }, 1500);
+      // ダウンロード完了後もボタンは完了状態のまま（ページリロードまで）
+      this.isDownloading = false;
 
     } catch (error) {
       console.error('[Injector] Download error:', error);
@@ -553,6 +554,52 @@ class UIInjector {
       button.style.background = 'linear-gradient(135deg, #0096FA 0%, #0073E6 100%)';
       button.style.cursor = 'pointer';
       button.disabled = false;
+      
+      // アイコンを元のダウンロードアイコンに戻す
+      const svgContainer = button.querySelector('div');
+      if (svgContainer) {
+        svgContainer.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" 
+               viewBox="0 0 24 24" 
+               fill="white"
+               style="
+                 width: 20px !important;
+                 height: 20px !important;
+                 display: block !important;
+               ">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+          </svg>
+        `;
+      }
+    }
+  }
+
+  private updateButtonToComplete() {
+    if (!this.downloadButton) return;
+    
+    const button = this.downloadButton.querySelector('button');
+    if (!button) return;
+    
+    // ボタンの背景色を成功色に変更
+    button.style.background = 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)';
+    button.style.cursor = 'default';
+    button.disabled = true; // 完了後は再度クリックできないように
+    
+    // アイコンをチェックマークに変更
+    const svgContainer = button.querySelector('div');
+    if (svgContainer) {
+      svgContainer.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" 
+             viewBox="0 0 24 24" 
+             fill="white"
+             style="
+               width: 20px !important;
+               height: 20px !important;
+               display: block !important;
+             ">
+          <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+        </svg>
+      `;
     }
   }
 

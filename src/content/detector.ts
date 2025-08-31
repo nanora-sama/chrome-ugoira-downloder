@@ -22,35 +22,130 @@ class UgoiraDetector {
       return;
     }
 
-    // 複数のタイミングでチェックを実行
-    const checkStrategies = () => {
-      // 即座にチェック
-      this.checkCurrentPage();
-      
-      // 短い遅延後にチェック（React初期レンダリング待ち）
-      setTimeout(() => this.checkCurrentPage(), 500);
-      setTimeout(() => this.checkCurrentPage(), 1500);
-      setTimeout(() => this.checkCurrentPage(), 3000);
-      
-      // より長い遅延後にもチェック（遅延読み込み対応）
-      setTimeout(() => this.checkCurrentPage(), 5000);
-    };
-
-    // DOMContentLoadedイベント
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', checkStrategies);
-    } 
-    
-    // windowのloadイベント（画像等も含めた完全読み込み）
-    if (document.readyState !== 'complete') {
-      window.addEventListener('load', checkStrategies);
-    }
-    
-    // 既に読み込み済みの場合も実行
-    checkStrategies();
+    // MutationObserverでDOM変更を監視し、確実にレンダリング完了を検知
+    this.waitForDOMReady();
     
     // Pixiv特有の読み込み完了を検知
     this.waitForPixivReady();
+  }
+
+  private waitForDOMReady() {
+    const targetSelectors = [
+      'canvas[role="presentation"]', // うごイラのcanvas
+      'h1', // 作品タイトル
+      'button[aria-label*="いいね"], button[aria-label*="Like"]', // いいねボタン
+      '[aria-label*="うごイラ"], button[aria-label*="Play"]', // 再生ボタン
+      'figcaption' // 作品情報
+    ];
+
+    let domCheckAttempts = 0;
+    const maxDomCheckAttempts = 30; // 最大15秒待つ（500ms * 30）
+    const domCheckInterval = 500;
+    let domObserver: MutationObserver | null = null;
+    let isDetected = false;
+
+    const checkDOM = () => {
+      if (isDetected) return;
+      
+      domCheckAttempts++;
+      console.log(`[Detector] DOM check attempt ${domCheckAttempts}/${maxDomCheckAttempts}`);
+      
+      // 必要な要素が存在するかチェック
+      const hasRequiredElements = targetSelectors.some(selector => 
+        document.querySelector(selector) !== null
+      );
+      
+      if (hasRequiredElements) {
+        console.log('[Detector] Required DOM elements found');
+        isDetected = true;
+        
+        // DOMが見つかったらMutationObserverを停止
+        if (domObserver) {
+          domObserver.disconnect();
+          domObserver = null;
+        }
+        
+        // 検出を実行
+        this.checkCurrentPage();
+        
+        // 念のため少し遅延してもう一度チェック
+        setTimeout(() => this.checkCurrentPage(), 1000);
+        setTimeout(() => this.checkCurrentPage(), 2000);
+      } else if (domCheckAttempts >= maxDomCheckAttempts) {
+        console.log('[Detector] Max DOM check attempts reached, forcing check');
+        
+        // タイムアウトしても一度はチェックを実行
+        this.checkCurrentPage();
+        
+        if (domObserver) {
+          domObserver.disconnect();
+          domObserver = null;
+        }
+      } else {
+        // 再度チェックをスケジュール
+        setTimeout(checkDOM, domCheckInterval);
+      }
+    };
+
+    // MutationObserverで動的なDOM変更を監視
+    const setupDOMObserver = () => {
+      if (isDetected) return;
+      
+      domObserver = new MutationObserver((mutations) => {
+        // DOM変更が検出されたら要素をチェック
+        const hasTargetElement = mutations.some(mutation => {
+          // 追加されたノードをチェック
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              // 目的の要素が追加されたかチェック
+              return targetSelectors.some(selector => 
+                element.matches(selector) || element.querySelector(selector)
+              );
+            }
+          }
+          return false;
+        });
+        
+        if (hasTargetElement && !isDetected) {
+          console.log('[Detector] Target element detected via MutationObserver');
+          isDetected = true;
+          
+          // 検出を実行
+          this.checkCurrentPage();
+          setTimeout(() => this.checkCurrentPage(), 500);
+          
+          // MutationObserverを停止
+          if (domObserver) {
+            domObserver.disconnect();
+            domObserver = null;
+          }
+        }
+      });
+
+      // body要素が存在するまで待つ
+      const startObserving = () => {
+        if (document.body && domObserver && !isDetected) {
+          domObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: false, // パフォーマンスのため属性変更は監視しない
+            characterData: false
+          });
+          console.log('[Detector] Started DOM MutationObserver');
+        } else if (!document.body) {
+          setTimeout(startObserving, 100);
+        }
+      };
+      
+      startObserving();
+    };
+
+    // MutationObserverを設定
+    setupDOMObserver();
+    
+    // 定期的なチェックも並行して実行
+    checkDOM();
   }
 
   private waitForPixivReady() {
@@ -93,10 +188,10 @@ class UgoiraDetector {
       if (currentUrl !== lastUrl) {
         lastUrl = currentUrl;
         if (currentUrl.includes('/artworks/')) {
-          // URL変更を検知したら複数回チェック
-          this.checkCurrentPage();
-          setTimeout(() => this.checkCurrentPage(), 500);
-          setTimeout(() => this.checkCurrentPage(), 1500);
+          console.log('[Detector] URL changed to artwork page, waiting for DOM');
+          // URL変更を検知したら新しいDOM待機処理を開始
+          this.waitForDOMReady();
+          this.waitForPixivReady();
         }
       }
     };
@@ -125,7 +220,7 @@ class UgoiraDetector {
 
     // body要素が存在するまで待つ
     const startObserving = () => {
-      if (document.body) {
+      if (document.body && this.observer) {
         this.observer.observe(document.body, {
           childList: true,
           subtree: true
