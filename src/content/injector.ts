@@ -214,13 +214,57 @@ class UIInjector {
   private findButtonContainer(): HTMLElement | null {
     console.log('[Injector] Finding button container...');
     
-    // 方法1: いいねボタンを含むセクションを探す（最新のPixivレイアウト）
+    // 方法1: 新しいDOM構造 - sc-f2412021-0 セクションを探す
+    const newActionSection = document.querySelector('section.sc-f2412021-0');
+    if (newActionSection) {
+      console.log('[Injector] Found new action section (sc-f2412021-0)');
+      return newActionSection as HTMLElement;
+    }
+
+    // 方法2: 三点メニューボタンを含むセクションを探す
+    const menuButton = document.querySelector('button.style_transparentButton__czlx7');
+    if (menuButton) {
+      const section = menuButton.closest('section');
+      if (section) {
+        console.log('[Injector] Found section via menu button');
+        return section as HTMLElement;
+      }
+    }
+
+    // 方法3: いいね！ボタン（新しい構造のボタン）
+    const newLikeButton = document.querySelector('button.style_button__c7Nvf');
+    if (newLikeButton) {
+      const parentDiv = newLikeButton.closest('div.sc-f2412021-5');
+      if (parentDiv) {
+        console.log('[Injector] Found like button parent div');
+        const section = parentDiv.closest('section');
+        if (section) {
+          console.log('[Injector] Found section containing like button');
+          return section as HTMLElement;
+        }
+      }
+    }
+
+    // 方法4: ブックマークボタン（ハートアイコン）
+    const bookmarkLink = document.querySelector('a.sc-38339279-1');
+    if (bookmarkLink) {
+      const parentDiv = bookmarkLink.closest('div.sc-f2412021-3');
+      if (parentDiv) {
+        console.log('[Injector] Found bookmark button parent div');
+        const section = parentDiv.closest('section');
+        if (section) {
+          console.log('[Injector] Found section containing bookmark button');
+          return section as HTMLElement;
+        }
+      }
+    }
+
+    // 方法5: いいねボタンを含むセクションを探す（従来のセレクタ）
     const likeButton = document.querySelector('button[data-click-action="click_toggleLike"], button[aria-label*="いいね"], button[aria-label*="Like"]');
     if (likeButton) {
       const section = likeButton.closest('section');
       if (section) {
         console.log('[Injector] Found section via like button');
-        // いいねボタンの親要素のフレックスコンテナを探す
         const flexContainer = likeButton.parentElement;
         if (flexContainer) {
           console.log('[Injector] Found flex container for buttons');
@@ -230,7 +274,7 @@ class UIInjector {
       }
     }
 
-    // 方法2: ブックマークボタンを探す
+    // 方法6: ブックマークボタンを探す（従来のセレクタ）
     const bookmarkButton = document.querySelector('button[data-click-action="click_toggleBookmark"], button[aria-label*="ブックマーク"], button[aria-label*="Bookmark"]');
     if (bookmarkButton) {
       const parent = bookmarkButton.parentElement;
@@ -240,13 +284,29 @@ class UIInjector {
       }
     }
 
-    // 方法3: アクションボタンエリアを探す（div要素も含める）
+    // 方法7: Canvas要素の近くのアクションボタンエリアを探す
+    const ugoiraCanvas = document.querySelector('canvas.sc-e6a9a33b-2');
+    if (ugoiraCanvas) {
+      // Canvasの親要素から上位を辿ってアクションセクションを見つける
+      let current = ugoiraCanvas.parentElement;
+      while (current) {
+        const actionSection = current.querySelector('section[class*="sc-f2412021"]');
+        if (actionSection) {
+          console.log('[Injector] Found action section near canvas');
+          return actionSection as HTMLElement;
+        }
+        current = current.parentElement;
+        // 無限ループを防ぐため、bodyまでで止める
+        if (current === document.body) break;
+      }
+    }
+
+    // 方法8: アクションボタンエリアを探す（div要素も含める）
     const actionAreas = document.querySelectorAll('section, div[class*="sc-"], div[class*="gtm-"]');
     for (const area of actionAreas) {
       // いいねボタンまたはブックマークボタンを含むエリアを探す
       if (area.querySelector('button[aria-label*="いいね"], button[aria-label*="Like"], button[aria-label*="ブックマーク"], button[aria-label*="Bookmark"]')) {
         console.log('[Injector] Found action area containing buttons');
-        // ボタンの直接の親要素を探す
         const buttonParent = area.querySelector('button')?.parentElement;
         if (buttonParent && buttonParent.children.length > 0) {
           console.log('[Injector] Found button parent container');
@@ -256,31 +316,11 @@ class UIInjector {
       }
     }
 
-    // 方法4: レガシーセレクタ（後方互換性）
+    // 方法9: レガシーセレクタ（後方互換性）
     const actionSection = document.querySelector('section.sc-d1c020eb-0');
     if (actionSection) {
       console.log('[Injector] Found action section (legacy)');
       return actionSection as HTMLElement;
-    }
-
-    // 方法5: シェアボタンの隣
-    const shareButton = document.querySelector('button[aria-label*="シェア"], button[aria-label*="Share"]');
-    if (shareButton) {
-      const parent = shareButton.parentElement;
-      if (parent) {
-        console.log('[Injector] Found parent of share button');
-        return parent as HTMLElement;
-      }
-    }
-
-    // 方法6: その他のボタンを探す
-    const otherButton = document.querySelector('button[aria-label*="その他"], button[aria-label*="More"], button[aria-label*="Menu"]');
-    if (otherButton) {
-      const parent = otherButton.parentElement;
-      if (parent) {
-        console.log('[Injector] Found parent of other button');
-        return parent as HTMLElement;
-      }
     }
 
     console.warn('[Injector] Could not find button container - will retry');
@@ -496,7 +536,8 @@ class UIInjector {
       // 投稿者名を取得（非同期で確実に取得）
       const authorName = await AuthorExtractor.getAuthorName(this.currentUgoiraInfo.illustId);
       const title = this.currentUgoiraInfo.title || 'ugoira';
-      const filename = `${authorName}_${title}.${extension}`;
+      const illustId = this.currentUgoiraInfo.illustId;
+      const filename = `${authorName}_${title}(${illustId}).${extension}`;
       
       await this.downloadFile(gifBlob, filename);
 
